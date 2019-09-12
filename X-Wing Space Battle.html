@@ -1,0 +1,730 @@
+<!DOCTYPE HTML>
+<HTML lang='ko'>
+<HEAD>
+
+  <meta charset="utf-8" />
+  <title>X-Wing Space Battle</title>
+  <link rel="stylesheet" href="character.css" />
+  <script src="https://code.jquery.com/jquery-3.3.1.js"></script>
+  <div id="score"></div>
+  <canvas id="myCanvas" width="640" height="480"></canvas>
+
+  <script type="text/javascript" src="load.js"></script>
+  <script type="text/javascript">
+
+    var canvas = document.getElementById("myCanvas");
+    var context = canvas.getContext("2d");
+
+    var score = 0;
+    var sec = 80;
+    var timeCount = 0;
+    /*배경*/
+    var back0 = new Image();        //배경 이미지
+    back0.src = "image/background.png";
+    var back1 = new Image();
+    back1.src = "image/background2.png";
+    var backcount = 0;              //배경 이미지 인덱스
+    var backgroundX = 0;      //배경 x 좌료
+    var backgroundY = 0;      //배경 y 좌표
+    var backgroundY1 = -480;  //두번째 배경 y좌표
+    var backgroundMove = 1.5;  //배경 이동속도
+    /**********************/
+
+    /*비행기*/
+    var gunship = new Image();    //비행기 이미지
+    gunship.src = "image/xwing.png";
+    var startX = 640/2-25;      //비행기 초기 위치
+    var startY = 480-80;        //비행기 초기 위치
+    var gunshipX = startX;     //비행기 x
+    var gunshipY = startY;     //비행기 y
+    var moveSpeed = 5;       //비행기 이동속도
+    var leftkey = false;    //왼쪽키눌림
+    var rightkey = false;   //오른쪽키눌림
+    var upkey = false;      //위키눌림
+    var downkey = false;    //아래키눌림
+    var dead = false;
+    var deadDelay = 0;
+    var weaponMode = 0;
+    /**********************/
+
+    /*적 비행기*/
+    var tiefighter = new Image();
+    tiefighter.src = "image/tiefighter.png";
+    var droidFighter = new Image();
+    droidFighter.src = "image/droid fighter.png";
+    var enemyList = [];
+    var droidList = [];
+    var enemyMoveSpeed = 1;
+    var droidMoveSpeed = 0.9;
+    var enemyHp = 3;
+    var droidHp = 5;
+    var explosionList = [];
+    var explosionAni = 10;
+    /*적 미사일*/
+    var enemyMissile = new Image();
+    var droidMissile = new Image();
+    enemyMissile.src = "image/enemyMissile.png";
+    droidMissile.src = "image/droidMissile.png";
+    var enemyMissileList = [];
+    var enemyMissileSpeed = 5;
+    var droidMissileSpeed = 3;
+    /*미사일*/
+    var missile = new Image();    //미사일 이미지
+    missile.src = "image/missile.png";
+    var missileList=[];          //미사일 객체 리스트
+    var missileSpeed = 10;      //미사일 속도
+    var keypress = false;      //미사일 누르기
+    var missileDelay = 10;      //발사속도
+    /*아이템*/
+    var itemList = [];
+    var itemspeed = 0.8;
+    /**********************/
+
+
+
+
+
+    /*초기화*/
+    function init(){
+      dead = false;
+      deadDelay = 0;
+      score = 0;
+      sec = 80;
+      weaponMode = 0;
+      $("#score").html(score);
+      $("#timeOver").hide();
+      gunshipX = startX;
+      gunshipY = startY;
+      if(enemyList.length > 0)
+        enemyList.splice(0, enemyList.length);
+      if(enemyMissileList.length > 0)
+          enemyMissileList.splice(0, enemyMissileList.length);
+      if(droidList.length > 0)
+          droidList.splice(0, droidList.length);
+      if(missileList.length > 0)
+        missileList.splice(0, missileList.length);
+      if(itemList.length>0)
+        itemList.splice(0, itemList.length);
+      if(explosionList.length>0){
+        explosionList.splice(0, explosionList.length);
+      }
+    }
+
+    /**************그리기*************/
+    function draw(){      //캔버스에 그리기
+      drawBackground();      //배경 그리기
+      backScrollDown();      //배경 위치 옮기기
+      drawMissile();        //미사일 그리기
+      if(!dead)             //플레이어 사망여부
+        drawPlane();        //플레이어 그리기
+      else
+        drawPlaneExplosion();  //플레이어 폭발
+      drawCoin();           //아이템 그리기
+      drawEnemy();          //적 그리기
+      drawEnemyMissile();   //적 미사일 그리기
+      drawExplosion();      //적기 폭
+    }
+    /****************스코어******************/
+    function setScore(){
+      var scoreElement = $("#score");
+      scoreElement.html("score : " + score);
+    }
+    /**********플레이어 비행기**********/
+    function drawPlane(){      //비행기 그리기
+      if(leftkey == true){
+        if(gunshipX > 0){
+          gunshipX -= moveSpeed;
+        }
+      }
+      else if(rightkey == true){
+        if(gunshipX < 590){
+          gunshipX += moveSpeed;
+        }
+      }
+      if(upkey == true){
+        if(gunshipY > 0){
+          gunshipY -= moveSpeed;
+        }
+      }
+      else if(downkey == true){
+        if(gunshipY < 430){
+          gunshipY += moveSpeed;
+        }
+      }
+      context.drawImage(gunship, gunshipX, gunshipY, 57, 60);
+    }
+    //비행기 사망여부
+    function checkPlane(){
+      //적 접촉
+      for(var i = 0; i < enemyList.length; i++){
+        var tar = enemyList[i];
+        if(gunshipX < tar.x + 30 && gunshipX > tar.x-30 && gunshipY < tar.y + 30 && gunshipY > tar.y - 30){
+          tar.hp = 0;
+          dead=true;
+        }
+      }for(var i = 0; i < droidList.length; i++){
+        var tar = droidList[i];
+        if(gunshipX < tar.x + 30 && gunshipX > tar.x-30 && gunshipY < tar.y + 30 && gunshipY > tar.y - 30){
+          tar.hp = 0;
+          dead=true;
+        }
+      }
+      //미사일 접촉
+      for(var i = 0; i < enemyMissileList.length; i++){
+        var tar = enemyMissileList[i];
+        if(gunshipX < tar.x+10 && gunshipX+50 > tar.x && gunshipY < tar.y + 10 && gunshipY + 30 > tar.y){
+          dead=true;
+          tar.isDead=true;
+        }
+      }
+    }
+
+    //비행기 폭발
+    function drawPlaneExplosion(){
+      if(!dead)
+        return;
+      if(deadDelay>=10){
+        clearInterval(intervalId);
+        document.getElementById("start").style.visibility = "visible";
+        init();
+        return;
+      }
+      planeExplodeSOUND.play();
+      context.drawImage(explosion[deadDelay], gunshipX, gunshipY, 80, 80);
+      sleep(50);
+      deadDelay+=1;
+
+    }
+    /**************************************/
+    function drawBackground(){      //배경 그리기
+      context.drawImage(back0, backgroundX, backgroundY, 640, 480);
+      context.drawImage(back1, backgroundX, backgroundY1, 640, 480);
+    }
+    function backScrollDown(){      //배경 움직이기
+      backgroundY += backgroundMove;
+      backgroundY1 += backgroundMove;
+      if(backgroundY >= 480){
+        backgroundY = -480;
+        backgroundY1 = 0;
+      }
+      if(backgroundY1 >= 480)
+      {
+        backgroundY1 = -480;
+        backgroundY = 0;
+      }
+    }
+    /**************적 비행기****************/
+    //적기 생성
+    function makeEnemy(){
+      var mkNum = Math.random()*100;
+      var result = Math.floor(mkNum);
+      if(result != 2){
+        return;
+      }
+      var enemyX = Math.floor(Math.random()*600 + 20);
+      var obj = {};
+      obj.x = enemyX;
+      obj.y = -50;
+      obj.isDead = false;
+      obj.hp = enemyHp;
+      enemyList.push(obj);
+
+      var mkDrd = Math.floor(Math.random()*20);
+      if(mkDrd != 1)
+        return;
+      var leftOrRight = Math.floor(Math.random()*2);
+      var obj2 = {};
+      if(leftOrRight == 0){
+        obj2.x = -50;
+        obj2.droidDir = 1;
+      }
+      else if(leftOrRight == 1){
+        obj2.x = 640+50;
+        obj2.droidDir = -1;
+      }
+      obj2.y = 50;
+      obj2.isDead = false;
+      obj2.hp = enemyHp + 27;
+      obj2.init = false;
+      obj2.isDroid = true;    //비행기가 드로이드 비행기인지 확인(미사일 발사)
+      obj2.droidFireDelay = 80;  //미사일 발사 속도
+      droidList.push(obj2);
+    }
+    //적 이동
+    function moveEnemy(){
+      for(var i = 0; i < enemyList.length; i++){
+        var tmp = enemyList[i];
+        tmp.y += enemyMoveSpeed;
+        if(tmp.y >= 530){
+          tmp.isDead=true;
+        }
+      }
+
+      //드로이드 파이터
+      for(var i = 0; i < droidList.length; i++){
+        var tmp = droidList[i];
+        //최초 등장
+        if(tmp.init == false){
+          if(tmp.x < 50){
+            tmp.x += droidMoveSpeed;
+          }
+          else if(tmp.x > 640-50){
+            tmp.x += droidMoveSpeed * tmp.droidDir;
+          }
+          else{
+            tmp.init = true;
+          }
+        }
+        else{
+          if(tmp.x < 0){
+            tmp.droidDir *= -1;
+            tmp.x = 0;
+          }
+          else if(tmp.x > 640-50){
+            tmp.droidDir *= -1;
+            tmp.x = 640-50
+          }
+          tmp.x += droidMoveSpeed * tmp.droidDir;
+        }
+      }
+    }
+    //적기 그리기
+    function drawEnemy(){
+      for(var i = 0; i < enemyList.length; i++){
+        var tmp = enemyList[i];
+        context.drawImage(tiefighter, tmp.x, tmp.y, 30, 40);
+      }
+      for(var i = 0; i < droidList.length; i++){
+        var tmp = droidList[i];
+        context.drawImage(droidFighter, tmp.x, tmp.y, 50, 60);
+      }
+    }
+    //적기 죽었는지 체크
+    function checkEnemy(){
+      for(var i = enemyList.length-1; i >= 0; i--){
+        var tmp = enemyList[i];
+        if(tmp.hp <= 0){
+          tmp.isDead = true;
+          var obj = {};
+          obj.x = tmp.x;
+          obj.y = tmp.y;
+          obj.animation = 0;
+          obj.framedelay = 5;
+          exSOUND[xt].currentTime = 0;
+          exSOUND[xt++].play();
+          if(xt>=10){
+            xt = 0;
+          }
+          explosionList.push(obj);
+          score += 10;
+          //점수
+
+          //죽은곳에서 아이템 생성
+          var hasItem = Math.floor(Math.random()*2);
+          if(hasItem == 1){
+            var item = {};
+            item.x = tmp.x;
+            item.y = tmp.y;
+            item.type = Math.floor(Math.random()*20);
+            itemList.push(item);
+          }
+
+        }
+        if(tmp.isDead == true){
+          enemyList.splice(i, 1);
+        }
+      }
+      for(var i = droidList.length-1; i >= 0; i--){
+        var tmp = droidList[i];
+        if(tmp.hp <= 0){
+          tmp.isDead = true;
+          var obj = {};
+          obj.x = tmp.x;
+          obj.y = tmp.y;
+          obj.animation = 0;
+          obj.framedelay = 5;
+          exSOUND[xt].currentTime = 0;
+          exSOUND[xt++].play();
+          if(xt>=10){
+            xt = 0;
+          }
+          explosionList.push(obj);
+          score += 25;
+          //점수 아이템
+
+          var hasItem = Math.floor(Math.random()*2);
+          if(hasItem == 1){
+            var item = {};
+            item.x = tmp.x;
+            item.y = tmp.y;
+            item.type = Math.floor(Math.random()*4);
+            itemList.push(item);
+          }
+        }
+        if(tmp.isDead == true){
+          droidList.splice(i, 1);
+        }
+      }
+    }
+    //적기 폭발
+    function drawExplosion(){
+      var tmp;
+      for(var i = 0; i < explosionList.length;i++){
+        tmp = explosionList[i];
+        if(tmp.framedelay <= 0){
+          context.drawImage(explosion[tmp.animation++], tmp.x-10, tmp.y, 50, 60);
+          tmp.framedelay = 5;
+        }
+        else{
+          tmp.framedelay--;
+        }
+        if(tmp.animation >= 10){
+          explosionList.splice(i, 1);
+        }
+        else
+          context.drawImage(explosion[tmp.animation], tmp.x-10, tmp.y, 50, 60);
+
+      }
+    }
+    //적기 미사일 발사
+    function enemyFire(){
+      var tmp;
+
+      for(var i=0; i<enemyList.length; i++){
+        tmp = enemyList[i];
+
+        var rd = Math.floor(Math.random()*400);
+        if(rd == 2){
+          makeEnemyMissile(i, tmp);
+
+          emFireSOUND[et].currentTime = 0;
+          emFireSOUND[et++].play();
+          if(et >= 10){
+            et = 0;
+          }
+        }
+
+      }
+      for(var i=0; i<droidList.length; i++){
+        tmp = droidList[i];
+        if(tmp.droidFireDelay <= 0){
+          makeEnemyMissile(i, tmp);
+          tmp.droidFireDelay = 80;
+          emFireSOUND[et].currentTime = 0;
+          emFireSOUND[et++].play();
+          if(et>=10)
+            et=0;
+        }
+
+        tmp.droidFireDelay--;
+      }
+    }
+
+    //적 미사일 생성
+
+    function makeEnemyMissile(i, tmp){
+      var obj = {};
+      obj.x = tmp.x+10;
+      obj.y = tmp.y+5;
+      obj.isDead = false;
+      if(tmp.isDroid == true)
+        obj.isDroid = true;
+      else {
+        obj.isDroid=false;
+      }
+      enemyMissileList.push(obj);
+    }
+
+    //적 미사일 이동
+
+    function moveEnemyMissile(){
+      var tmp;
+      for(var i = 0; i < enemyMissileList.length; i++){
+        tmp = enemyMissileList[i];
+        if(tmp.isDroid)
+          tmp.y += droidMissileSpeed;
+        else
+          tmp.y += enemyMissileSpeed;
+
+        if(tmp.y > 530){
+          tmp.isDead = true;
+        }
+      }
+
+    }
+
+    //적 미사일 제거
+    function removeEnemyMissile(){
+      for(var i = enemyMissileList.length-1; i>=0; i--){
+        var tmp = enemyMissileList[i];
+        if(tmp.isDead){
+          enemyMissileList.splice(i, 1);
+        }
+      }
+    }
+    //적 미사일 생성
+    function drawEnemyMissile(){
+      for(var i = 0; i < enemyMissileList.length; i++){
+        var tmp = enemyMissileList[i];
+        if(tmp.isDroid == true)
+          context.drawImage(droidMissile, tmp.x, tmp.y, 12, 20);
+        else
+          context.drawImage(enemyMissile, tmp.x, tmp.y, 7, 20);
+      }
+    }
+    /*****************미사일********************/
+    //미사일 만들기
+    function makeMissile(){
+
+      if(keypress == true){
+        if(missileDelay<0){
+          if(weaponMode == 0){
+            var obj = {};
+            obj.x = gunshipX+25;
+            obj.y = gunshipY-10;
+            obj.isDead1 = false;
+            missileList.push(obj);
+
+          }
+          else if(weaponMode == 1){
+            var obj = {};
+            obj.x = gunshipX+50;
+            obj.y = gunshipY-10;
+            obj.isDead = false;
+            missileList.push(obj);
+            var obj2 = {};
+            obj2.x = gunshipX;
+            obj2.y = gunshipY-10;
+            obj2.isDead = false;
+            missileList.push(obj2);
+            $("#test").html(missileList);
+          }
+          else if(weaponMode == 2){
+            var obj = {};
+            obj.x = gunshipX+50;
+            obj.y = gunshipY-10;
+            obj.isDead = false;
+            missileList.push(obj);
+            var obj2 = {};
+            obj2.x = gunshipX;
+            obj2.y = gunshipY-10;
+            obj2.isDead = false;
+            missileList.push(obj2);
+            var obj3 = {};
+            obj3.x = gunshipX+15;
+            obj3.y = gunshipY-10;
+            obj3.isDead = false;
+            missileList.push(obj3);
+            var obj4 = {};
+            obj4.x = gunshipX+35;
+            obj4.y = gunshipY-10;
+            obj4.isDead = false;
+            missileList.push(obj4);
+          }
+          fireSOUND[st].currentTime = 0;
+          fireSOUND[st++].play();
+          if(st >= 10){
+            st = 0;
+          }
+          missileDelay=10;
+        }
+      }
+
+    }
+    //미사일 그리기
+    function drawMissile(){
+        for(var i = 0; i < missileList.length; i++){
+          var temp = missileList[i];
+          //$("#test").html(i + " : " + temp.x + " , " + temp.y);    //테스트
+          context.drawImage(missile, temp.x, temp.y, 7, 32);
+        }
+    }
+    //미사일 이동
+    function moveMissile(){
+      for(var i=0; i<missileList.length; i++){
+        var temp = missileList[i];
+        temp.y = temp.y - missileSpeed;
+        if(temp.y <= - 40){
+          temp.isDead = true;
+        }
+      }
+    }
+    //미사일 제거
+    function removeMissile(){
+      for(var i = missileList.length - 1; i >= 0; i--){
+        var temp = missileList[i];
+        if(temp.isDead){
+          missileList.splice(i, 1);
+        }
+      }
+    }
+    //미사일 충돌여부
+    function checkMissile(){
+      var tmp;
+      var tmp2;
+      for(var i = missileList.length - 1; i >= 0; i--){
+        tmp = missileList[i];
+        for(var j = enemyList.length - 1; j >= 0; j--){
+          tmp2 = enemyList[j];
+          if(tmp.x+2 < tmp2.x+50 && tmp.x+2 > tmp2.x && tmp.y < tmp2.y+20 && tmp.y > tmp2.y){
+            missileList.splice(i, 1);
+            tmp2.hp -= 1;
+          }
+        }
+        for(var j = droidList.length - 1; j >= 0; j--){
+          tmp2 = droidList[j];
+          if(tmp.x+2 < tmp2.x+50 && tmp.x+2 > tmp2.x && tmp.y < tmp2.y+20 && tmp.y > tmp2.y){
+            missileList.splice(i, 1);
+            tmp2.hp -= 1;
+          }
+        }
+      }
+    }
+    /*키누르기*/
+    document.addEventListener("keydown", onkey_press, false);
+    document.addEventListener("keyup", onkey_up, false);
+    function onkey_press(){      //키눌렀을때
+      if(event.keyCode==37){    //왼쪽이동
+        leftkey = true;
+      }
+      else if(event.keyCode==39){    //오른쪽이동
+        rightkey = true;
+      }
+      else if(event.keyCode==38){    //위쪽이동
+        upkey = true;
+      }
+      else if(event.keyCode==40){    //아래쪽이동
+        downkey = true;
+      }
+
+      if(event.keyCode==90){          //z키 공격
+        keypress = true;
+      }
+    }
+    function onkey_up(){      //키땠을때
+      if(event.keyCode==37){    //x이동
+        leftkey = false;
+      }
+      else if(event.keyCode==39){    //x이동
+        rightkey = false;
+      }
+      if(event.keyCode==38){    //y이동
+        upkey = false;
+      }
+      else if(event.keyCode==40){    //y이동
+        downkey = false;
+      }
+
+      if(event.keyCode==90){
+        keypress = false;
+      }
+    }
+    /***********아이템***********/
+    function moveItem(){
+      for(var i = 0; i < itemList.length; i++){
+        var tmp = itemList[i];
+        if(tmp.y > 550){
+          itemList.splice(i, 1);
+        }
+        else {
+          tmp.y += itemspeed;
+        }
+      }
+    }
+    function getItem(){
+      for(var i = 0; i < itemList.length; i++){
+        var tar = itemList[i];
+        if(gunshipX < tar.x + 30 && gunshipX > tar.x-60 && gunshipY < tar.y + 30 && gunshipY > tar.y - 50){
+          if(tar.type == 1)
+            weaponMode = 0;
+          else if(tar.type == 2)
+            weaponMode = 1;
+          else if(tar.type == 3)
+            weaponMode = 2;
+          else {
+            score += 5;
+          }
+          itemList.splice(i, 1);
+
+        }
+      }
+    }
+    function drawCoin(){
+      for(var i = 0; i < itemList.length; i++){
+        var tar = itemList[i];
+        switch(tar.type){
+          case 1:
+            context.drawImage(weaponItem1, tar.x, tar.y, 20, 20);
+            break;
+          case 2:
+            context.drawImage(weaponItem2, tar.x, tar.y, 20, 20);
+            break;
+          case 3:
+            context.drawImage(weaponItem3, tar.x, tar.y, 20, 20);
+            break;
+          default:
+            context.drawImage(coinItem, tar.x, tar.y, 20, 20);
+            break;
+        }
+
+      }
+    }
+
+    //타임 오버
+    function timer(){
+      timeCount++;
+      if(timeCount>=100){
+        sec--;
+        timeCount = 0;
+      }
+      $("#timed").html(sec);
+      if(sec<=0){
+        document.getElementById("start").style.visibility = "visible";
+        sec=60;
+        $("#timeOver").html("Time Over<br />Your Score : " + score);
+        $("#timeOver").show();
+        clearInterval(intervalId);
+      }
+    }
+    var intervalId;
+    /*인터벌 함수*/
+    function start(){
+        init();
+        intervalId = clearInterval();
+        document.getElementById("start").style.visibility = "hidden";
+        intervalId = setInterval(function(){
+          themeSOUND.play();
+          checkPlane();        //비행기 충돌
+          makeMissile();        //미사일 생성
+          moveMissile();        //미사일 이동
+          removeMissile();      //미사일 제거
+          makeEnemy();          //적 생성
+          moveEnemy();          //적 이동
+          checkEnemy();        //적 사망 체크
+          checkMissile();      //미사일 충돌 제거 체크
+          enemyFire();          //적 미사일 발사
+          moveEnemyMissile();   //적 미사일 이동
+          removeEnemyMissile();  //적 미사일 제거
+          moveItem();           //아이템 이동
+          getItem();            //아이템 획득
+          draw();                //개체 그리기
+          setScore();            //스코어 업데이트
+          timer();              //시간 업데이트
+          missileDelay--;      //미사일 딜레이시간
+        }, 10);
+    }
+
+  </script>
+</HEAD>
+<BODY onload="init()">
+  <div id="but">
+    <input type="button" value="start" id="start" onclick="start()" />
+  </div>
+  <div id="timed">
+
+  </div>
+  <div id="timeOver">
+    TIME OVER
+  </div>
+</BODY>
+</HTML>

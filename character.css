@@ -1,0 +1,49 @@
+
+canvas{
+  border:1px black solid;
+  margin:0 auto;
+}
+#score{
+  color:white;
+  font-size: 15pt;
+  font-style:oblique;
+  position:absolute;
+  left:25px;
+  top:10px;
+
+}
+#timed{
+  color:white;
+  font-size: 15pt;
+  font-style:oblique;
+  position:absolute;
+  left:25px;
+  top:460px;
+}
+#timeOver{
+  color:red;
+  font-size: 30pt;
+  font-style:oblique;
+  position:absolute;
+  left:220px;
+  top:200px;
+
+}
+#test{
+  color:red;
+  font-size: 15pt;
+  position:absolute;
+  left:20px;
+  top:500px;
+}
+#but{
+  position:absolute;
+  left:640/2;
+  top:480/2;
+}
+#start{
+  position:absolute;
+  width:100px;
+  heigth:80px;
+  font-size:18pt;
+}
